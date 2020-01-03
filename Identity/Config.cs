@@ -20,7 +20,7 @@ namespace Identity
         public static IEnumerable<ApiResource> Apis =>
             new ApiResource[]
             {
-                new ApiResource("api1", "My API #1")
+                new ApiResource("jwApi", "JW API")
             };
 
 
@@ -36,7 +36,7 @@ namespace Identity
                     AllowedGrantTypes = GrantTypes.ClientCredentials,
                     ClientSecrets = { new Secret("511536EF-F270-4058-80CA-1C89C192F69A".Sha256()) },
 
-                    AllowedScopes = { "api1" }
+                    AllowedScopes = { "jwApi" }
                 },
 
                 // MVC client using code flow + pkce
@@ -54,7 +54,7 @@ namespace Identity
                     PostLogoutRedirectUris = { "http://localhost:5003/signout-callback-oidc" },
 
                     AllowOfflineAccess = true,
-                    AllowedScopes = { "openid", "profile", "api1" }
+                    AllowedScopes = { "openid", "profile", "jwApi" }
                 },
 
                 // SPA client using code flow + pkce
@@ -79,7 +79,7 @@ namespace Identity
                     PostLogoutRedirectUris = { "http://localhost:5002/index.html" },
                     AllowedCorsOrigins = { "http://localhost:5002" },
 
-                    AllowedScopes = { "openid", "profile", "api1" }
+                    AllowedScopes = { "openid", "profile", "jwApi" }
                 }
             };
     }

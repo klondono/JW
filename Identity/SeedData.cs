@@ -15,7 +15,7 @@ using Serilog;
 
 namespace Identity
 {
-    public class SeedData
+    public static class SeedData
     {
         public static void EnsureSeedData(string connectionString)
         {
