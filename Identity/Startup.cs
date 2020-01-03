@@ -4,6 +4,8 @@
 
 using Identity.Data;
 using Identity.Models;
+using IdentityServer4.EntityFramework.DbContexts;
+using IdentityServer4.EntityFramework.Mappers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -11,6 +13,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Linq;
+using System.Reflection;
 
 namespace Identity
 {
@@ -43,24 +47,49 @@ namespace Identity
                 iis.AutomaticAuthentication = false;
             });
 
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+            //store connection string
+            var connectionString = Configuration.GetConnectionString("IdentityConnection");
+
+            //store assembly for migrations
+            var migrationsAssmbly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+
+            services.AddDbContext<IdentityAppDbContext>(options =>
+                options.UseSqlServer(connectionString));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
-                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddEntityFrameworkStores<IdentityAppDbContext>()
                 .AddDefaultTokenProviders();
-            
-            var builder = services.AddIdentityServer(options =>
+
+
+            //var builder = services.AddIdentityServer(options =>
+            //{
+            //    options.Events.RaiseErrorEvents = true;
+            //    options.Events.RaiseInformationEvents = true;
+            //    options.Events.RaiseFailureEvents = true;
+            //    options.Events.RaiseSuccessEvents = true;
+            //})
+
+            var builder = services.AddIdentityServer()
+                 // use sql db for storing configuration data
+                 .AddConfigurationStore(configDb =>
+                 {
+                     configDb.ConfigureDbContext = db => db.UseSqlServer(connectionString,
+                        sql => sql.MigrationsAssembly(migrationsAssmbly));
+                     
+
+                 })
+                // use sql db for storing operational data
+                .AddOperationalStore(operationalDb =>
                 {
-                    options.Events.RaiseErrorEvents = true;
-                    options.Events.RaiseInformationEvents = true;
-                    options.Events.RaiseFailureEvents = true;
-                    options.Events.RaiseSuccessEvents = true;
+                    operationalDb.ConfigureDbContext = db => db.UseSqlServer(connectionString,
+                        sql => sql.MigrationsAssembly(migrationsAssmbly));
+
                 })
-                .AddInMemoryIdentityResources(Config.Ids)
-                .AddInMemoryApiResources(Config.Apis)
-                .AddInMemoryClients(Config.Clients)
+                //.AddInMemoryIdentityResources(Config.Ids)
+                //.AddInMemoryApiResources(Config.Apis)
+                //.AddInMemoryClients(Config.Clients)
                 .AddAspNetIdentity<ApplicationUser>();
+
 
             // not recommended for production - you need to store your key material somewhere secure
             builder.AddDeveloperSigningCredential();
@@ -78,6 +107,8 @@ namespace Identity
 
         public void Configure(IApplicationBuilder app)
         {
+            InitializeDatabase(app);
+
             if (Environment.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -93,6 +124,51 @@ namespace Identity
             {
                 endpoints.MapDefaultControllerRoute();
             });
+        }
+
+        private void InitializeDatabase(IApplicationBuilder app)
+        {
+            //using services scope
+            using(var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var persistedGrantDbContext = serviceScope.ServiceProvider
+                    .GetRequiredService<PersistedGrantDbContext>();
+                persistedGrantDbContext.Database.Migrate();
+
+                var configDbContext = serviceScope.ServiceProvider
+                    .GetRequiredService<ConfigurationDbContext>();
+                configDbContext.Database.Migrate();
+
+                if (!configDbContext.Clients.Any())
+                {
+                    foreach(var client in Config.Clients)
+                    {
+                        configDbContext.Clients.Add(client.ToEntity());
+                    }
+
+                    configDbContext.SaveChanges();
+                }
+
+                if (!configDbContext.IdentityResources.Any())
+                {
+                    foreach (var res in Config.Ids)
+                    {
+                        configDbContext.IdentityResources.Add(res.ToEntity());
+                    }
+
+                    configDbContext.SaveChanges();
+                }
+
+                if (!configDbContext.ApiResources.Any())
+                {
+                    foreach (var api in Config.Apis)
+                    {
+                        configDbContext.ApiResources.Add(api.ToEntity());
+                    }
+
+                    configDbContext.SaveChanges();
+                }
+            }
         }
     }
 }
