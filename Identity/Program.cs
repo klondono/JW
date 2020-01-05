@@ -14,7 +14,7 @@ using System.Linq;
 
 namespace Identity
 {
-    public class Program
+    public static class Program
     {
         public static int Main(string[] args)
         {
