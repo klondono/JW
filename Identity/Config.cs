@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See LICENSE in the project root for license information.
 
 
+using IdentityServer4;
 using IdentityServer4.Models;
 using System.Collections.Generic;
 
@@ -47,14 +48,21 @@ namespace Identity
 
                     AllowedGrantTypes = GrantTypes.CodeAndClientCredentials,
                     RequirePkce = true,
+                    RequireConsent = true,
                     ClientSecrets = { new Secret("49C1A7E1-0C79-4A89-A3D6-A37998FB86B0".Sha256()) },
 
                     RedirectUris = { "http://localhost:5002/signin-oidc" },
                     FrontChannelLogoutUri = "http://localhost:5002/signout-oidc",
                     PostLogoutRedirectUris = { "http://localhost:5002/signout-callback-oidc" },
-
                     AllowOfflineAccess = true,
-                    AllowedScopes = { "openid", "profile", "jwApi" }
+
+                    AllowedScopes = new List<string>
+                    {
+                        IdentityServerConstants.StandardScopes.OpenId,
+                        IdentityServerConstants.StandardScopes.Profile,
+                        "jwApi"
+                    }
+
                 },
 
                 // SPA client using code flow + pkce
@@ -79,7 +87,10 @@ namespace Identity
                     PostLogoutRedirectUris = { "http://localhost:5002/index.html" },
                     AllowedCorsOrigins = { "http://localhost:5002" },
 
-                    AllowedScopes = { "openid", "profile", "jwApi" }
+                    AllowedScopes = {                         
+                        IdentityServerConstants.StandardScopes.OpenId,
+                        IdentityServerConstants.StandardScopes.Profile,
+                        "jwApi" }
                 }
             };
     }
